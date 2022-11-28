@@ -43,10 +43,12 @@ func main() {
 
 	server.Server.Handler = mux
 
-	err = server.Server.ListenAndServeTLS("", "")
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		err = server.Server.ListenAndServeTLS("", "")
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	klog.Info("Server started")
 
