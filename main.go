@@ -10,13 +10,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/SeasonPilot/admission-registry/webhook"
+	"github.com/SeasonPilot/admission-registry/pkg"
 
 	"k8s.io/klog"
 )
 
 func main() {
-	var param webhook.WebParam
+	var param pkg.WebParam
 
 	flag.IntVar(&param.Port, "port", 443, "webhook server port")
 	flag.StringVar(&param.CertFile, "certFile", "/etc/", "X509certFile")
@@ -28,7 +28,7 @@ func main() {
 		return
 	}
 
-	server := webhook.WebhookServer{
+	server := pkg.WebhookServer{
 		Server: &http.Server{
 			Addr: fmt.Sprintf(":%d", param.Port),
 			TLSConfig: &tls.Config{
@@ -38,8 +38,8 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/validate", server.Validate())
-	mux.HandleFunc("/mutate", server.Mutate())
+	mux.HandleFunc("/validate", server.Handler)
+	mux.HandleFunc("/mutate", server.Handler)
 
 	server.Server.Handler = mux
 
