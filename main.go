@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/SeasonPilot/admission-registry/pkg"
@@ -19,15 +20,14 @@ func main() {
 	var param pkg.WebParam
 
 	flag.IntVar(&param.Port, "port", 443, "webhook server port")
-	flag.StringVar(&param.CertFile, "certFile", "/etc/", "X509certFile")
-	flag.StringVar(&param.KeyFile, "keyFile", "/etc/", "X509keyFile")
+	flag.StringVar(&param.CertFile, "tlsCertFile", "/etc/webhook/certs/tls.crt", "x509 certification file")
+	flag.StringVar(&param.KeyFile, "tlsKeyFile", "/etc/webhook/certs/tls.key", "x509 private key file")
 	flag.Parse()
 
 	pair, err := tls.LoadX509KeyPair(param.CertFile, param.KeyFile)
 	if err != nil {
 		return
 	}
-
 	server := pkg.WebhookServer{
 		Server: &http.Server{
 			Addr: fmt.Sprintf(":%d", param.Port),
@@ -35,6 +35,7 @@ func main() {
 				Certificates: []tls.Certificate{pair},
 			},
 		},
+		WhiteListRegistries: strings.Split(os.Getenv("WHITELIST_REGISTRIES"), ","),
 	}
 
 	mux := http.NewServeMux()
