@@ -2,7 +2,7 @@ package pkg
 
 import (
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -36,7 +36,7 @@ func (s WebhookServer) Handler(writer http.ResponseWriter, request *http.Request
 	var body []byte
 
 	if request.Body != nil {
-		data, err := io.ReadAll(request.Body)
+		data, err := ioutil.ReadAll(request.Body)
 		if err == nil {
 			body = data
 		}
@@ -50,14 +50,13 @@ func (s WebhookServer) Handler(writer http.ResponseWriter, request *http.Request
 
 	// 校验 content-type
 	contentType := request.Header.Get("Content-Type")
-	if contentType != "application-json" {
+	if contentType != "application/json" { // fixme:
 		klog.Errorf("Content-Type is %s, but expect application/json", contentType)
 		http.Error(writer, fmt.Sprintf("unexpect type %s", contentType), http.StatusBadRequest)
 		return
 	}
 
 	var reqAdmissionReview admissionv1.AdmissionReview
-	var respAdmissionReview admissionv1.AdmissionReview
 	var admissionResp *admissionv1.AdmissionResponse
 	_, _, err := deserializer.Decode(body, nil, &reqAdmissionReview)
 	if err != nil {
@@ -79,13 +78,15 @@ func (s WebhookServer) Handler(writer http.ResponseWriter, request *http.Request
 		}
 	}
 
-	respAdmissionReview = admissionv1.AdmissionReview{
-		TypeMeta: respAdmissionReview.TypeMeta,
+	klog.Infof("reqAdmissionReview: %v", reqAdmissionReview)
+
+	respAdmissionReview := admissionv1.AdmissionReview{
+		TypeMeta: reqAdmissionReview.TypeMeta, // fixme: 应该是 req 的 TypeMeta
 		Request:  reqAdmissionReview.Request,
 		Response: admissionResp,
 	}
 
-	klog.Info(fmt.Sprintf("sending response: %v", respAdmissionReview.Response))
+	klog.Info(fmt.Sprintf("sending admissionReview: %v", respAdmissionReview))
 
 	data, err := json.Marshal(respAdmissionReview)
 	if err != nil {
