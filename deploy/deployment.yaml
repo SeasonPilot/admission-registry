@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: whitelist
-          image: seasonpilot/admission-registry:v0.0.5
+          image: seasonpilot/admission-registry:v0.0.9
           imagePullPolicy: IfNotPresent
           env:
             - name: WHITELIST_REGISTRIES

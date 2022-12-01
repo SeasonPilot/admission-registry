@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	admissionv1 "k8s.io/api/admission/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,6 +15,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog"
 )
+
+const (
+	AnnotationMutateKey = "io.season.admission-registry/mutate" // io.season.admission-registry/mutate=no/off/false/n
+	AnnotationStatusKey = "io.season.admission-registry/status" // io.season.admission-registry/status=mutated
+)
+
+type patchOperation struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value"`
+}
 
 type WebParam struct {
 	Port     int
@@ -155,5 +167,144 @@ func (s WebhookServer) validate(ar *admissionv1.AdmissionRequest) *admissionv1.A
 }
 
 func (s WebhookServer) mutate(ar *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse {
-	return nil
+	var objectMeta metav1.ObjectMeta
+
+	klog.Infof("AdmissionReview for Kind=%s, Namespace=%s Name=%s UID=%s",
+		ar.Kind.Kind, ar.Namespace, ar.Name, ar.UID)
+
+	switch ar.Kind.Kind {
+	case "Deployment": // fixme: 大小写敏感 Deployment
+		var deploy appsv1.Deployment
+		err := json.Unmarshal(ar.Object.Raw, &deploy)
+		if err != nil {
+			klog.Errorf("json unmarshal err: %s", err)
+			return &admissionv1.AdmissionResponse{
+				UID: ar.UID,
+				Result: &metav1.Status{
+					Message: err.Error(),
+					Code:    http.StatusBadRequest,
+				},
+			}
+		}
+		objectMeta = deploy.ObjectMeta
+	case "Service":
+		var service corev1.Service
+		err := json.Unmarshal(ar.Object.Raw, &service)
+		if err != nil {
+			klog.Errorf("json unmarshal err: %s", err)
+			return &admissionv1.AdmissionResponse{
+				UID: ar.UID,
+				Result: &metav1.Status{
+					Message: err.Error(),
+					Code:    http.StatusBadRequest,
+				},
+			}
+		}
+		objectMeta = service.ObjectMeta
+	default:
+		klog.Infof("Can't handle the kind(%s) object", ar.Kind.Kind)
+		return &admissionv1.AdmissionResponse{
+			UID:     ar.UID,
+			Allowed: false,
+			Result: &metav1.Status{
+				Message: fmt.Sprintf("Can't handle the kind(%s) object", ar.Kind.Kind),
+				Code:    http.StatusBadRequest,
+			},
+		}
+	}
+
+	// 判断是否需要 mutate
+	if !mutationRequired(objectMeta) {
+		return &admissionv1.AdmissionResponse{
+			Allowed: true,
+			UID:     ar.UID,
+			Result: &metav1.Status{
+				Message: "No mutate required",
+				Code:    http.StatusOK,
+			},
+		}
+	}
+
+	var patchs []patchOperation
+	annos := map[string]string{
+		AnnotationStatusKey: "mutated",
+	}
+	patchs = append(patchs, mutateAnnotation(objectMeta.GetAnnotations(), annos)...)
+
+	bytePatchs, err := json.Marshal(patchs)
+	if err != nil {
+		klog.Errorf("Can't marshal patchs err: %s", err.Error())
+		return &admissionv1.AdmissionResponse{
+			UID: ar.UID,
+			Result: &metav1.Status{
+				Message: err.Error(),
+				Code:    http.StatusBadRequest,
+			},
+		}
+	}
+
+	return &admissionv1.AdmissionResponse{
+		UID:     ar.UID, // fixme: UID 一定要返回
+		Allowed: true,
+		Result: &metav1.Status{
+			Message: "object mutated",
+			Code:    http.StatusOK,
+		},
+		Patch: bytePatchs,
+		PatchType: func() *admissionv1.PatchType {
+			p := admissionv1.PatchTypeJSONPatch
+			return &p
+		}(),
+	}
+}
+
+func mutationRequired(metadata metav1.ObjectMeta) (required bool) {
+	annotations := metadata.GetAnnotations()
+	if annotations == nil {
+		return true
+	}
+
+	// 判断 AnnotationMutateKey
+	switch strings.ToLower(annotations[AnnotationMutateKey]) {
+	case "no", "n", "false", "off":
+		required = false
+	default:
+		required = true
+	}
+
+	// 判断 AnnotationStatusKey
+	if strings.ToLower(annotations[AnnotationStatusKey]) == "mutated" {
+		required = false
+	}
+	klog.Infof("Mutation policy for %s/%s: required: %v", metadata.Name, metadata.Namespace, required)
+
+	return
+}
+
+func mutateAnnotation(target, add map[string]string) (patchOperations []patchOperation) {
+	if target == nil {
+		target = make(map[string]string, len(add))
+	}
+
+	for k, v := range add {
+		var p patchOperation
+		if _, ok := target[k]; ok {
+			p = patchOperation{
+				Op:    "replace",                    // fixme:
+				Path:  "/metadata/annotations/" + k, // fixme:
+				Value: v,                            //fixme:
+			}
+		} else {
+			p = patchOperation{
+				Op:   "add",
+				Path: "/metadata/annotations",
+				Value: map[string]string{
+					k: v,
+				},
+			}
+		}
+		patchOperations = append(patchOperations, p)
+	}
+
+	return
 }

@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deploy2
+  annotations:
+    io.season.admission-registry/mutate: "no"
+spec:
+  selector:
+    matchLabels:
+      app: test2-mutate
+  template:
+    metadata:
+      labels:
+        app: test2-mutate
+    spec:
+      containers:
+        - name: mutate
+          image: docker.io/nginx
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
