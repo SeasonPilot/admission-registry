@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,6 +14,26 @@ spec:
       labels:
         app: admission-registry
     spec:
+      initContainers:
+        - name: webhook-init
+          image: seasonpilot/cert:v0.0.2
+          imagePullPolicy: Always
+          env:
+            - name: WEBHOOK_NAMESPACE
+              value: default
+            - name: WEBHOOK_SERVICE
+              value: admission-registry
+            - name: VALIDATE_CONFIG
+              value: admission-registry
+            - name: VALIDATE_PATH
+              value: /validate
+            - name: MUTATE_CONFIG
+              value: admission-registry-mutate
+            - name: MUTATE_PATH
+              value: /mutate
+          volumeMounts:
+            - mountPath: /etc/webhook/certs
+              name: webhook-certs
       containers:
         - name: whitelist
           image: seasonpilot/admission-registry:v0.0.9
@@ -28,8 +49,7 @@ spec:
               readOnly: true
       volumes:
         - name: webhook-certs
-          secret:
-            secretName: admission-registry-tls
+          emptyDir: { }
 ---
 apiVersion: v1
 kind: Service
@@ -43,3 +63,30 @@ spec:
       targetPort: 443
   selector:
     app: admission-registry
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admission-registry-sa
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: admission-registry-clusterrole
+rules:
+  - verbs: [ "*" ]
+    apiGroups: [ "admissionregistration.k8s.io" ]
+    resources: [ "validatingwebhookconfigurations", "mutatingwebhookconfiguratrions" ]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: admission-registry-clusterrolebinding
+roleRef:
+  name: admission-registry-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+subjects:
+  - kind: ServiceAccount
+    name: admission-registry-sa
+    namespace: default
