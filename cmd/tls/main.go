@@ -91,7 +91,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	srvCertificate, err := x509.CreateCertificate(rand.Reader, srvCert, ca, srvPrivKey.PublicKey, srvPrivKey)
+	srvCertificate, err := x509.CreateCertificate(rand.Reader, srvCert, ca, &srvPrivKey.PublicKey, privateKey) //fixme: 1. 应该用ca的私钥给加密;2. pub的值要用指针
 	if err != nil {
 		log.Panic(err)
 	}
@@ -120,7 +120,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	pkg.WriteFile("/etc/webhook/certs/cert.pem", srvCertPEM.Bytes())
+	err = pkg.WriteFile("/etc/webhook/certs/cert.pem", srvCertPEM.Bytes())
 	if err != nil {
 		log.Panic(err)
 	}
