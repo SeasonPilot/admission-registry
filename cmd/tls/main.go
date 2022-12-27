@@ -180,7 +180,10 @@ func CreateAdmissionConfig(ca []byte) error {
 							Resources:   []string{"pods"},
 						},
 					}},
-					SideEffects:             nil,
+					SideEffects: func() *admissionv1.SideEffectClass {
+						se := admissionv1.SideEffectClassNone
+						return &se
+					}(),
 					AdmissionReviewVersions: []string{"v1"},
 				},
 			},
@@ -232,7 +235,10 @@ func CreateAdmissionConfig(ca []byte) error {
 							},
 						},
 					},
-					SideEffects:             nil,
+					SideEffects: func() *admissionv1.SideEffectClass {
+						se := admissionv1.SideEffectClassNone
+						return &se
+					}(),
 					AdmissionReviewVersions: []string{"v1"},
 				},
 			},
