@@ -115,7 +115,7 @@ func main() {
 	}
 
 	//
-	err = os.Mkdir("/etc/webhook/certs/", 0666)
+	err = os.MkdirAll("/etc/webhook/certs/", 0666) //fixme: file exists
 	if err != nil {
 		log.Panic(err)
 	}
