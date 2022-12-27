@@ -15,7 +15,7 @@ import (
 
 	"github.com/SeasonPilot/admission-registry/pkg"
 
-	v1 "k8s.io/api/admissionregistration/v1"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -156,24 +156,24 @@ func CreateAdmissionConfig(ca []byte) error {
 	ctx := context.Background()
 	if validatingName != "" {
 		validateAdmissionClient := cli.AdmissionregistrationV1().ValidatingWebhookConfigurations()
-		validatingCfg := &v1.ValidatingWebhookConfiguration{
+		validatingCfg := &admissionv1.ValidatingWebhookConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: validatingName,
 			},
-			Webhooks: []v1.ValidatingWebhook{
+			Webhooks: []admissionv1.ValidatingWebhook{
 				{
 					Name: "io.season.admission-registry",
-					ClientConfig: v1.WebhookClientConfig{
-						Service: &v1.ServiceReference{
+					ClientConfig: admissionv1.WebhookClientConfig{
+						Service: &admissionv1.ServiceReference{
 							Namespace: webhookNamespace,
 							Name:      srvName,
 							Path:      &validatingPath,
 						},
 						CABundle: ca,
 					},
-					Rules: []v1.RuleWithOperations{{
-						Operations: []v1.OperationType{"CREATE"},
-						Rule: v1.Rule{
+					Rules: []admissionv1.RuleWithOperations{{
+						Operations: []admissionv1.OperationType{admissionv1.Create},
+						Rule: admissionv1.Rule{
 							APIGroups:   []string{""},
 							APIVersions: []string{"v1"},
 							Resources:   []string{"pods"},
@@ -206,22 +206,25 @@ func CreateAdmissionConfig(ca []byte) error {
 	if mutatingName != "" {
 		mutatingCli := cli.AdmissionregistrationV1().MutatingWebhookConfigurations()
 
-		mutatingCfg := &v1.MutatingWebhookConfiguration{
-			Webhooks: []v1.MutatingWebhook{
+		mutatingCfg := &admissionv1.MutatingWebhookConfiguration{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: mutatingName,
+			},
+			Webhooks: []admissionv1.MutatingWebhook{
 				{
-					Name: mutatingName,
-					ClientConfig: v1.WebhookClientConfig{
-						Service: &v1.ServiceReference{
+					Name: "io.season.admission-registry-mutate",
+					ClientConfig: admissionv1.WebhookClientConfig{
+						Service: &admissionv1.ServiceReference{
 							Namespace: webhookNamespace,
 							Name:      srvName,
 							Path:      &mutatingPath,
 						},
 						CABundle: ca,
 					},
-					Rules: []v1.RuleWithOperations{
+					Rules: []admissionv1.RuleWithOperations{
 						{
-							Operations: []v1.OperationType{"CREATE"},
-							Rule: v1.Rule{
+							Operations: []admissionv1.OperationType{admissionv1.Create},
+							Rule: admissionv1.Rule{
 								APIGroups:   []string{"app", ""},
 								APIVersions: []string{"v1"},
 								Resources:   []string{"deployments", "services"},
