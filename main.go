@@ -26,7 +26,7 @@ func main() {
 
 	pair, err := tls.LoadX509KeyPair(param.CertFile, param.KeyFile)
 	if err != nil {
-		return
+		panic(err) // fixme: err未处理！！
 	}
 	server := pkg.WebhookServer{
 		Server: &http.Server{
