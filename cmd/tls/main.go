@@ -120,12 +120,12 @@ func main() {
 		log.Panic(err)
 	}
 
-	err = pkg.WriteFile("/etc/webhook/certs/cert.pem", srvCertPEM.Bytes())
+	err = pkg.WriteFile("/etc/webhook/certs/tls.crt", srvCertPEM.Bytes()) // fixme: 文件名称不一致
 	if err != nil {
 		log.Panic(err)
 	}
 
-	err = pkg.WriteFile("/etc/webhook/certs/cert-key.pem", srvPrivKeyPEM.Bytes())
+	err = pkg.WriteFile("/etc/webhook/certs/tls.key", srvPrivKeyPEM.Bytes())
 	if err != nil {
 		log.Panic(err)
 	}
