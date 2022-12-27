@@ -17,7 +17,7 @@ spec:
       serviceAccountName: admission-registry-sa
       initContainers:
         - name: webhook-init
-          image: seasonpilot/cert:v0.0.2
+          image: seasonpilot/cert:v0.0.3
           imagePullPolicy: Always
           env:
             - name: WEBHOOK_NAMESPACE
@@ -37,7 +37,7 @@ spec:
               name: webhook-certs
       containers:
         - name: whitelist
-          image: seasonpilot/admission-registry:v0.0.9
+          image: seasonpilot/admission-registry:v0.0.10
           imagePullPolicy: IfNotPresent
           env:
             - name: WHITELIST_REGISTRIES
