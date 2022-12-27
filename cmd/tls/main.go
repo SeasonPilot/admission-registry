@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"log"
 	"math/big"
 	"os"
@@ -190,15 +191,15 @@ func CreateAdmissionConfig(ca []byte) error {
 			if errors.IsNotFound(err) { // 判断是否已经存在 ValidatingWebhookConfigurations
 				_, err = validateAdmissionClient.Create(ctx, validatingCfg, metav1.CreateOptions{})
 				if err != nil {
-					return err
+					return fmt.Errorf("create ValidatingWebhookConfiguration err: %s", err)
 				}
 			} else {
-				return err
+				return fmt.Errorf("get ValidatingWebhookConfiguration err: %s", err)
 			}
 		} else { // 如果存在则更新 ValidatingWebhookConfigurations
 			_, err = validateAdmissionClient.Update(ctx, validatingCfg, metav1.UpdateOptions{})
 			if err != nil {
-				return err
+				return fmt.Errorf("update ValidatingWebhookConfiguration err: %s", err)
 			}
 		}
 	}
