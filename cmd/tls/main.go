@@ -189,7 +189,7 @@ func CreateAdmissionConfig(ca []byte) error {
 			},
 		}
 		// 判断是否已经存在 ValidatingWebhookConfigurations
-		_, err = validateAdmissionClient.Get(ctx, validatingName, metav1.GetOptions{})
+		validatingWebhookConfiguration, err := validateAdmissionClient.Get(ctx, validatingName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) { // 判断是否已经存在 ValidatingWebhookConfigurations
 				_, err = validateAdmissionClient.Create(ctx, validatingCfg, metav1.CreateOptions{})
@@ -200,6 +200,7 @@ func CreateAdmissionConfig(ca []byte) error {
 				return fmt.Errorf("get ValidatingWebhookConfiguration err: %s", err)
 			}
 		} else { // 如果存在则更新 ValidatingWebhookConfigurations
+			validatingCfg.ResourceVersion = validatingWebhookConfiguration.ResourceVersion
 			_, err = validateAdmissionClient.Update(ctx, validatingCfg, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("update ValidatingWebhookConfiguration err: %s", err)
